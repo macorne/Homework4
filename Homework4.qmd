@@ -1,0 +1,193 @@
+---
+title: "Homework4"
+author: "Matthew Corne"
+date: "09-19-2024"
+format: html
+editor: visual
+---
+
+## Task 1:  Conceptual Questions
+
+1. If your working directory is myfolder/homework/, what relative path would you specify to get the file located at myfolder/MyData.csv?
+
+>"../MyData.csv"
+
+2. What are the major benefits of using R projects?
+
+>R projects allow us to read raw data in or connect to a database; manipulate data as needed; subset data sets; summarize data to create meaningful insights; model data to make inference or predict outcomes; and communicate our results via dashboards, documents, model files, etc.
+
+3. What is git and what is github?
+
+>git is a version control software to help track the changes we commit to files and allow multiple users to work on the same project.  github is a hosting service that allows us to do git-based projects on the internet and share them widely!
+
+4. What are the two main differences between a tibble and a data.frame?
+
+> One difference is that the default print() method for a tibble provides information on the number of observations, columns, and shows only the first few rows/columns.  Another difference is that tibbles do not coerce down to a vector when subsetted with [, though they do when using $.
+
+5. Rewrite the following nested function call using BaseR’s chaining operator:
+
+```{r}
+library(tidyverse)
+
+#nested
+nested <- arrange(filter(select(as_tibble(iris), starts_with("Petal"), Species),
+Petal.Length < 1.55), Species)
+
+#Print tibble
+nested
+
+#chained
+#filter first since, in theory (see notes) you might not subset with that variable
+#same with arrange, though more likely to keep variable
+chained <- as_tibble(iris) |> filter(Petal.Length < 1.55) |> arrange(Species) |> select(starts_with("Petal"), Species)
+
+#Print tibble
+chained
+
+#Check to confirm that the tibbles are equal
+isTRUE(all.equal(nested,chained))
+
+```
+
+
+## Task 2:  Reading Delimited Data
+
+### Glass Data
+
+We read this data directly into R from the specified URL, using read_csv since the delimiter is a comma.  Then, we print the tibble to inspect.
+
+```{r}
+library(readr)
+library(vroom)
+
+#Read this data into R directly from the specified URL, use read_csv since delim = ','
+glass_data <- read_csv("https://www4.stat.ncsu.edu/~online/datasets/glass.data",col_names=c("Id","RI","Na","Mg","Al","Si","K","Ca","Ba","Fe","Type_of_Glass"),guess_max=min(1000,Inf)) #Had some trouble with using n_max = Inf, then using n_max in guess_max
+
+#Print the tibble
+glass_data
+
+```
+
+We start a chain to overwrite the Type_of_glass variable using mutate(). Then, we continue our chain and keep only observations where the Fe variable is less than 0.2 and the Type of Glass is either “tableware” or “headlamps”.  Finally, we print the tibble for confirmation.
+
+```{r}
+#Chain to obtain the desired tibble
+glass_data <- glass_data |> mutate(Type_of_Glass = factor(glass_data$Type_of_Glass,labels=c("building_windows_float_processed", "building_windows_non_float_processed", "vehicle_windows_float_processed", "containers", "tableware", "headlamps"))) |> filter(Fe < 0.2, Type_of_Glass %in% c("tableware", "headlamps"))
+
+#Print the tibble
+glass_data
+
+```
+
+### Yeast Data
+
+We read the data directly into R from the specified URL, using read_table since we have a space delimiter.  Then, we print the tibble to inspect.
+
+```{r}
+#Read this data into R directly from the specified URL, use read_table since delim = ' '
+yeast_data <- read_table("https://www4.stat.ncsu.edu/~online/datasets/yeast.data",col_names=c("seq_name","mcg","gvh","alm","mit","erl","pox","vac","nuc","class"),guess_max=min(1000,Inf)) #Had some trouble with using n_max = Inf, then using n_max in guess_max, so just used Inf directly
+
+#Print the tibble
+yeast_data
+
+```
+
+We start a chain that removes the seq_name and nuc columns.  Then, we continue the chain to add columns corresponding to the mean and median of each numeric variable (mcg, gvh, alm, mit, erl, pox, and vac) at each class grouping (see the across() function as we did in the dplyr video!).  Finally, we print the tibble for confirmation.
+
+```{r}
+#Chain to obtain the desired tibble
+yeast_data <- yeast_data |> select(!c("seq_name","nuc")) |> group_by(class) |> mutate(across(where(is.numeric),mean,.names="mean_{ .col}")) |> mutate(across(where(is.numeric),median,.names="median_{ .col}"))
+
+#Print the tibble
+yeast_data
+
+```
+
+
+## Task 2:  Combining Excel and Delimited Data
+
+### White Wine Data
+
+Because the data is in an Excel file, we need to download the file to our directory (convenient to put it in with .qmd file) from the link:  https://www4.stat.ncsu.edu/~online/datasets/white-wine.xlsx.  Then, we identify the sheets in the file, import the data from the first sheet, and use the column names in the second sheet to rename the columns from the first sheet.  Finally, we add a type column indicating that this is white wine and print the tibble to confirm updates.
+
+```{r}
+#Load the readxl library to use the Excel functions
+library(readxl)
+
+#Identify the different sheets in the file
+sheets <- excel_sheets("white-wine.xlsx")
+sheets
+
+#Import the data from the first sheet
+white_wine <- read_excel("white-wine.xlsx",sheet=sheets[1])
+
+#Print the tibble
+white_wine
+
+#Read in the data from the 2nd sheet to get a data frame with one column containing alternative versions of the variable names
+ww_altvarnames <- read_excel("white-wine.xlsx",sheet=sheets[2])
+ww_altvarnames$Variables
+
+#Grab that column and overwrite the current white wine tibble column names (colnames())
+for (i in 1:ncol(white_wine)){
+  colnames(white_wine)[i] = ww_altvarnames$Variables[i]
+}
+
+#Verify that the column names have been changed
+colnames(white_wine)
+
+#Add a type column to indicate that these are white wines
+white_wine <- white_wine |> mutate(type="white")
+
+#Print the tibble
+white_wine
+
+```
+
+### Red Wine Data
+
+This is a .csv file, but it has a semicolon delimiter, so we will use read_delim.  We import the file, then use the variables from the second "white-wine.xlsx" sheet as column names for the red wine data set.  Finally, we add a type column indicating that this is red wine and print the tibble to confirm the updates.
+
+```{r}
+#Read this in using the readr package. Be careful that the columns are read in as the correct type!
+
+red_wine <- read_delim("https://www4.stat.ncsu.edu/~online/datasets/red-wine.csv", delim=";", guess_max = min(1000,Inf))
+
+#Replace the variable names as done above
+for (i in 1:ncol(red_wine)){
+  colnames(red_wine)[i] = ww_altvarnames$Variables[i]
+}
+
+#Append a column denoting the type as “red”
+red_wine <- red_wine |> mutate(type="red")
+
+#Print the tibble
+red_wine
+
+```
+
+### Combine Wine Data Sets
+
+We concatenate the white wine and red wine data sets.  Print the tibble to inspect.
+
+```{r}
+#Combine these two data sets into one data set
+wine <- dplyr::bind_rows(white_wine,red_wine)
+
+#Print the tibble
+wine
+
+```
+
+Next, we start a chain on our new combined data object to filter the data to look only at high-quality wines (quality > 6.5) and wines that have a reasonable alcohol value (alcohol < 132).  Then, we continue our chain to sort the data from highest quality to lowest.  Then, we select only the variables that contain acid, the alcohol variable, the type variable, and the quality variable.  Finally, we add the mean and standard deviation of the alcohol variable to the data set for each setting of the quality variable and print the tibble to confirm.
+
+```{r}
+#Use chaining to obtain desired tibble
+wine <- wine |> filter(quality > 6.5, alcohol < 132) |> arrange(desc(quality)) |> select(contains("acid"),alcohol,type,quality) |> group_by(quality) |> mutate(mean_alcohol=mean(alcohol),std_dev_alcohol=sd(alcohol))
+
+#Print the tibble
+wine
+
+```
+
+NOTE:  Throughout, when I have said, "Print the tibble," I mean just the partial printing by writing the name of the tibble.  Printing whole tibbles would be prohibitive due to the numbers of rows and columns in most of the raw data.
