@@ -31,29 +31,6 @@ Petal.Length < 1.55), Species)
 
 > as_tibble(iris) |> filter(Petal.Length < 1.55) |> arrange(Species) |> select(starts_with("Petal"), Species)
 
-```{r include = FALSE}
-library(tidyverse)
-
-#nested
-nested <- arrange(filter(select(as_tibble(iris), starts_with("Petal"), Species),
-Petal.Length < 1.55), Species)
-
-#Print tibble
-nested
-
-#chained
-#filter first since, in theory (see notes) you might not subset with that variable
-#same with arrange, though more likely to keep variable
-chained <- as_tibble(iris) |> filter(Petal.Length < 1.55) |> arrange(Species) |> select(starts_with("Petal"), Species)
-
-#Print tibble
-chained
-
-#Check to confirm that the tibbles are equal
-isTRUE(all.equal(nested,chained))
-
-```
-
 
 ## Task 2:  Reading Delimited Data
 
@@ -62,6 +39,7 @@ isTRUE(all.equal(nested,chained))
 We read this data directly into R from the specified URL, using read_csv since the delimiter is a comma.  Then, we print the tibble to inspect.
 
 ```{r}
+library(tidyverse)
 library(readr)
 library(vroom)
 
