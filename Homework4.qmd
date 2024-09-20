@@ -26,7 +26,13 @@ editor: visual
 
 5. Rewrite the following nested function call using BaseR’s chaining operator:
 
-```{r}
+arrange(filter(select(as_tibble(iris), starts_with("Petal"), Species),
+Petal.Length < 1.55), Species)
+
+> as_tibble(iris) |> filter(Petal.Length < 1.55) |> arrange(Species) |> select(starts_with("Petal"), Species)
+
+```{r include = FALSE}
+
 library(tidyverse)
 
 #nested
